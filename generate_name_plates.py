@@ -10,11 +10,18 @@ import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # フォント設定
-font_path = "C:\\Windows\\Fonts\\KikaiChokokuJIS-Md.otf"  # 適切なフォントパスに置き換えてください
+try:
+    # 正しいパス形式で試す
+    font_path = "C:/Users/xx/AppData/Local/Microsoft/Windows/Fonts/BestTen-DOT.otf"
+    ImageFont.truetype(font_path, 10)  # テスト読み込み
+except:
+    # 失敗したらWindows標準フォントを使用
+    font_path = "C:/Windows/Fonts/meiryo.ttc"
+
 font_size = 200
 font = ImageFont.truetype(font_path, font_size)
 small_font = ImageFont.truetype(font_path, font_size - 10)
-info_font = ImageFont.truetype(font_path, 80)  # 説明文用の小さいフォント
+info_font = ImageFont.truetype(font_path, 100)  # 説明文用の小さいフォント
 
 # テンプレート画像
 template_path = "name_plate_sample.png"
@@ -23,7 +30,11 @@ template_path = "name_plate_sample.png"
 def read_csv(file_path):
     with open(file_path, mode='r', encoding='utf-8') as file:
         reader = csv.DictReader(file)
-        return [row for row in reader]
+        # 各フィールドの前後空白とタブを削除
+        return [
+            {k: v.strip(' \t') for k, v in row.items()} 
+            for row in reader
+        ]
 
 # 特殊文字をアンダースコアに置換
 def sanitize_filename(filename):
@@ -50,6 +61,10 @@ def generate_qr_code(text, filename):
 
 # 画像を生成する
 def generate_image(data, output_dir):
+    # 出力ディレクトリ作成
+    qr_output_dir = os.path.join(output_dir, "qr_codes")
+    os.makedirs(qr_output_dir, exist_ok=True)
+    
     # テンプレート画像を開く
     img = Image.open(template_path)
     draw = ImageDraw.Draw(img)
@@ -81,15 +96,16 @@ def generate_image(data, output_dir):
     
     # QRコード用テキストを生成
     qr_text = f"http://twitter.com/intent/tweet?text={data['作品']}({data['name']})%20%20%23つくろがや&url={data['x']}"
-    qr_filename = os.path.join(output_dir, f"{safe_name}_qr.png")
-    qr_size = generate_qr_code(qr_text, qr_filename)  # サイズ情報を取得
+    qr_filename = os.path.join(qr_output_dir, f"{safe_name}_qr.png")
+    qr_size = generate_qr_code(qr_text, qr_filename)
     
     # QRコードを画像に貼り付け (1.5倍サイズで貼り付け)
     qr_img = Image.open(qr_filename)
     img.paste(qr_img.resize((int(qr_size[0]*1.2), int(qr_size[1]*1.2))), (1900, 1000))  # 位置を調整
     
     # 説明テキスト
-    info_text = f"""読み込むと下記の文言が
+    info_text = f"""右→のQRコードを
+読み込むと下記の文言が
 自動入力されます
 「{data['作品']}
 ({data['name']})
@@ -97,14 +113,15 @@ def generate_image(data, output_dir):
 {data['x']}」
 コメント等追記いただき
 ぜひご活用ください
-メンションではないので
+
+※メンションではないので
 通知は行きません"""
     
     # 複数行テキストを描画
     y_position = 600
     for line in info_text.split('\n'):
         draw.text((150, y_position), line, font=info_font, fill="black")
-        y_position += 80  # 行間も少し詰める
+        y_position += 100  # 行間も少し詰める
     
     # 画像を保存
     output_path = os.path.join(output_dir, f"{safe_name}_plate.png")
