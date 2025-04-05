@@ -62,9 +62,22 @@ def generate_image(data, output_dir):
     work_text = f"作品名：{data['作品']}"
     name_text = f"出展者名：{data['name']}"
     
-    # テキスト位置（適宜調整が必要）
-    draw.text((100, 100), work_text, font=font, fill="black")
-    draw.text((100, 300), name_text, font=font, fill="black")
+    # 文字数制限
+    max_length = 8
+    
+    # フォント選択
+    work_font = info_font if len(data['作品']) > max_length else font
+    name_font = info_font if len(data['name']) > max_length else font
+    
+    # テキスト位置
+    work_y = 100
+    name_y = 300
+    
+    # 作品名を描画
+    draw.text((100, work_y), work_text, font=work_font, fill="black")
+    
+    # 出展者名を描画
+    draw.text((100, name_y), name_text, font=name_font, fill="black")
     
     # QRコード用テキストを生成
     qr_text = f"http://twitter.com/intent/tweet?text={data['作品']}({data['name']})%20%20%23つくろがや&url={data['x']}"
@@ -78,7 +91,8 @@ def generate_image(data, output_dir):
     # 説明テキスト
     info_text = f"""読み込むと下記の文言が
 自動入力されます
-「{data['作品']}({data['name']})
+「{data['作品']}
+({data['name']})
 #つくろがや
 {data['x']}」
 コメント等追記いただき
@@ -87,7 +101,7 @@ def generate_image(data, output_dir):
 通知は行きません"""
     
     # 複数行テキストを描画
-    y_position = 1000
+    y_position = 600
     for line in info_text.split('\n'):
         draw.text((150, y_position), line, font=info_font, fill="black")
         y_position += 80  # 行間も少し詰める
