@@ -24,6 +24,10 @@ ASSEMBLY_COPY = (
     "破線を山折りで折り、カメラ、SNS共有、タッチのOK/NGを必要に応じて説明欄の下に出してください",
     "全てOKの場合は真ん中だけ切り左半分を見せればOKです",
 )
+ASSEMBLY_EXAMPLE = (
+    "例)全てOK:中央だけ切る",
+    "　※NGがある場合は切れ目を追加し調整",
+)
 QR_CAPTION = "X(旧Twitter)に感想を簡単に投稿できます！"
 JP = "EventCardJP"
 BLUE, RED, GREY = (0.1, 0.35, 0.55), (0.65, 0.2, 0.15), (0.65,) * 3
@@ -95,7 +99,8 @@ def read_cards(path: Path, *, allow_blank_work=False) -> list[Card]:
                 raise ValueError(f"CSV {line}行: 参加人数とparticipantCountが一致しません")
             count = positive_count(raw or alias) if raw or alias else None
             place, day = cell("場所"), cell("日付")
-            place = (day + "  " + (place or "未割当")).strip()
+            clean_day = re.sub(r"\s*[（(]\s*仮日程\s*[）)]", "", day).replace("仮日程", "").strip()
+            place = (clean_day + "  " + (place or "未割当")).strip()
             if cell("画像").startswith(("http:","https:","//","\\\\")):
                 raise ValueError("画像はローカルのファイルパスを指定してください")
             image = Path(cell("画像")) if cell("画像") else None
@@ -192,12 +197,15 @@ def permission_band(d: Drawing):
                 hand = [(4,16),(0,10),(1,8),(5,11),(5,2),(7,2),(7,9),(8,0),(10,0),(10,9),(11,1),(13,1),(13,10),(14,3),(16,3),(16,15),(13,20),(7,20),(4,16)]
                 for a, b in zip(hand, hand[1:]):
                     line(left+3+a[0]*.7,6.5+a[1]*.7,left+3+b[0]*.7,6.5+b[1]*.7)
-            bx, top = left+19.8, 8.9
+            # Equal nominal 3.1mm outline gap for camera, SNS and hand.
+            bx, top = left+(19.8 if group == 2 else 22.1), 8.9
+            c.setStrokeColorRGB(.82,.03,.05)
+            c.setLineWidth(2.6)
             if option == 0:
                 c.circle(bx*mm,A4[1]-top*mm,2.5*mm,stroke=1,fill=0)
             else:
-                line(bx-2.5,top-2.5,bx+2.5,top+2.5)
-                line(bx-2.5,top+2.5,bx+2.5,top-2.5)
+                d.line(bx-2.2,top-2.2,bx+2.2,top+2.2,color=(.82,.03,.05),weight=2.6)
+                d.line(bx-2.2,top+2.2,bx+2.2,top-2.2,color=(.82,.03,.05),weight=2.6)
             c.restoreState()
 
 
@@ -213,35 +221,50 @@ def assembly(d: Drawing):
     c.translate(-105*mm,-(A4[1]-159*mm))
     d.box("組み立て",12,121,186,6,10,10)
     d.box("\n".join(ASSEMBLY_COPY),12,130,186,18,10,10)
-    d.box("全てOK：中央だけ切る",12,153,100,5,9,9)
+    d.box(ASSEMBLY_EXAMPLE[0],12,152,100,5,9,9)
+    d.box(ASSEMBLY_EXAMPLE[1],12,158,105,5,9,9)
     c.saveState()
-    c.translate(12*mm,A4[1]-162*mm)
+    c.translate(12*mm,A4[1]-167*mm)
     c.scale(.45,.45)
     c.translate(0,-A4[1])
     permission_band(d)
     c.restoreState()
-    mark = lambda a,b,x,y,col,dash=False: d.line(a,b,x,y,color=col,dashed=dash,weight=1)
-    mark(59.25,162,59.25,171.45,RED)
-    d.line(12,171.45,106.5,171.45,dashed=True)
-    for x,col in ((35.6,BLUE),(82.9,RED)):
-        mark(x,173,x,177,col)
-        mark(x,177,x-1.2,175.5,col)
-        mark(x,177,x+1.2,175.5,col)
-    d.box("表へ",29,179,24,5,9,9)
-    d.box("裏へ",76,179,24,5,9,9)
-    d.box("山折り・表と裏",130,153,68,5,9,9)
-    x,top,k = 147,161,.34
-    h = 92*math.sqrt(3)/2
-    d.line(x,top+h*k,x+46*k,top)
-    d.line(x+46*k,top,x+92*k,top+h*k)
-    d.line(x+92*k,top+h*k,x,top+h*k)
-    qx,qt = x+10.5*k,top+(h-21*math.sqrt(3)/2)*k
-    mark(x-.8,top+h*k-.45,qx-.8,qt-.45,BLUE)
-    mark(x+.8,top+h*k+.45,qx+.8,qt+.45,RED,True)
-    d.box("表：見せる側",118,189,29,5,7.5,7.5)
-    mark(141,192,x-.8,top+h*k-.45,BLUE)
-    d.box("裏：不要側",169,177,30,5,7.5,7.5)
-    mark(171,183,qx+.8,qt+.45,RED)
+    mark = lambda a,b,x,y,col,weight=1: d.line(a,b,x,y,color=col,weight=weight)
+    mark(59.25,167,59.25,176.45,(.82,.03,.05))
+    d.line(12,176.45,106.5,176.45,dashed=True)
+    for x,col in ((35.6,(.125,.125,.125)),(82.9,(.82,.03,.05))):
+        mark(x,178,x,182,col)
+        mark(x,182,x-1.2,180.5,col)
+        mark(x,182,x+1.2,180.5,col)
+    d.box("表へ",29,184,24,5,9,9)
+    d.box("裏へ",76,184,24,5,9,9)
+    # Approved side view: the selector alternatives share one bottom-right
+    # hinge; the front is a separate free end. No extra return or fold.
+    d.box("横から見た図",118,151,80,5,9,9)
+    k,apex = .074,860-350*math.sqrt(3)
+    ink,note,selector_red = (.125,.125,.125),(.408,.408,.408),(.82,.03,.05)
+    def point(p):return (118+(p[0]-450)*k,157+(p[1]-apex)*k)
+    def path(points,color,width):
+        for a,b in zip(points,points[1:]):
+            mark(*point(a),*point(b),color,width*k*mm)
+    def label(value,x,y,size,color=ink):
+        px,py=point((x,y))
+        c.setFont(JP,size*k*mm)
+        c.setFillColorRGB(*color)
+        c.drawString(px*mm,A4[1]-py*mm,value)
+    hinge,outside=(1150,860),(1054,615)
+    ratio=math.hypot(96,245)/math.hypot(246,93)
+    inside=(1150-246*ratio,860-93*ratio)
+    path([(1050,860-60*math.sqrt(3)),(800,apex),(450,860),hinge,outside],ink,7.5)
+    path([hinge,inside],selector_red,7.5)
+    label("前面",1020,425,34)
+    path([(1005,438),(922.5,500)],note,2)
+    label("外側へ立てる",1240,515,40)
+    label("見せるマーク",1240,565,30)
+    path([(1240,590),(1190,590),(1092.4,713)],note,2)
+    label("内側へ入れる",640,598,40,selector_red)
+    label("隠すマーク",640,645,30,selector_red)
+    path([(850,666),(960,720),(1002.3,804.2)],note,2)
     c.restoreState()
 
 
@@ -308,7 +331,7 @@ def generate(cards: list[Card], output: Path, template="tent", *, font=DEFAULT_F
     if template not in ("tent","badges") or not cards:
         raise ValueError("テンプレートと出力対象を確認してください")
     register_font(font)
-    fixed = "組み立て全てOK：中央だけ切る表へ裏へ山折り・表と裏表：見せる側裏：不要側"+"".join(ASSEMBLY_COPY)+QR_CAPTION
+    fixed = "組み立て表へ裏へ横から見た図前面外側へ立てる見せるマーク内側へ入れる隠すマーク"+"".join(ASSEMBLY_EXAMPLE)+"".join(ASSEMBLY_COPY)+QR_CAPTION
     for card in cards:
         check_glyphs(card.name+card.place+(card.title+card.description+fixed if template == "tent" else ""))
         if template == "tent" and not card.title.strip():
