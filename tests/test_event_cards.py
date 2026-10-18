@@ -93,7 +93,8 @@ class EventCardsTests(unittest.TestCase):
             text="".join(pdf.pages[0].extract_text().split())
             for copy in ASSEMBLY_COPY:self.assertIn("".join(copy.split()),text)
             for copy in ASSEMBLY_EXAMPLE:self.assertIn("".join(copy.split()),text)
-            for copy in ["紙の下端","折り返し"]:self.assertIn(copy,text)
+            for copy in ["横から見た図","外側へ立てる","見せるマーク","内側へ入れる","隠すマーク"]:self.assertIn(copy,text)
+            for copy in ["同じ折り目","重なりは間隔を広げて表示"]:self.assertNotIn(copy,text)
             self.assertNotIn("根元まで21mm",text)
             with self.assertRaisesRegex(ValueError,"フォントにない文字"):
                 generate([Card("架空🤖","作品","",None)],folder/"bad.pdf")

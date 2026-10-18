@@ -230,43 +230,41 @@ def assembly(d: Drawing):
     permission_band(d)
     c.restoreState()
     mark = lambda a,b,x,y,col,weight=1: d.line(a,b,x,y,color=col,weight=weight)
-    mark(59.25,167,59.25,176.45,RED)
+    mark(59.25,167,59.25,176.45,(.82,.03,.05))
     d.line(12,176.45,106.5,176.45,dashed=True)
-    for x,col in ((35.6,BLUE),(82.9,RED)):
+    for x,col in ((35.6,(.125,.125,.125)),(82.9,(.82,.03,.05))):
         mark(x,178,x,182,col)
         mark(x,182,x-1.2,180.5,col)
         mark(x,182,x+1.2,180.5,col)
     d.box("表へ",29,184,24,5,9,9)
     d.box("裏へ",76,184,24,5,9,9)
-    d.box("山折り・表と裏",130,153,68,5,9,9)
-    x,bottom,k = 154,190,.34
-    h = 92*math.sqrt(3)/2
-    top = bottom-h*k
-    ink,note = (.18,.18,.18),(.4,.4,.4)
-    mark(x,bottom,x+46*k,top,ink,.9)
-    mark(x+46*k,top,x+92*k,bottom,ink,.9)
-    mark(x+92*k,bottom,x,bottom,ink,.9)
-    gap,nx,ny = 1.6,-math.sqrt(3)/2,-.5
-    qx,qt = x+10.5*k,bottom-21*math.sqrt(3)/2*k
-    mark(x+nx*gap,bottom+ny*gap,qx+nx*gap,qt+ny*gap,BLUE,1.2)
-    mark(x-nx*gap,bottom-ny*gap,qx-nx*gap,qt-ny*gap,RED,1.2)
-    # Continuous solid U-return around the paper edge; layer spacing enlarged.
-    def point(angle):
-        return (x+gap*(nx*math.cos(angle)-.5*math.sin(angle)),bottom+gap*(ny*math.cos(angle)+math.sqrt(3)/2*math.sin(angle)))
-    for i in range(1,21):
-        p,q = point((i-1)*math.pi/20),point(i*math.pi/20)
-        mark(*p,*q,ink,1.2)
-    def leader(points):
-        for p,q in zip(points,points[1:]):mark(*p,*q,note,.3)
-    d.box("表：見せる側",118,170,29,5,7.5,7.5)
-    leader([(143,174),(148,174),(qx+nx*gap,qt+ny*gap)])
-    d.box("裏：不要側",118,180,29,5,7.5,7.5)
-    leader([(143,184),(149,184),(qx-nx*gap,qt-ny*gap)])
-    d.box("紙の下端",118,193,29,5,7.5,7.5)
-    leader([(138,195),(146,195),(x,bottom)])
-    d.box("折り返し",169,193,29,5,7.5,7.5)
-    leader([(169,195),(160,195),(x-gap*.5,bottom+gap*math.sqrt(3)/2)])
-    d.box("重なりは間隔を広げて表示",118,199,80,4,6.5,6.5)
+    # Approved side view: the selector alternatives share one bottom-right
+    # hinge; the front is a separate free end. No extra return or fold.
+    d.box("横から見た図",118,151,80,5,9,9)
+    k,apex = .074,860-350*math.sqrt(3)
+    ink,note,selector_red = (.125,.125,.125),(.408,.408,.408),(.82,.03,.05)
+    def point(p):return (118+(p[0]-450)*k,157+(p[1]-apex)*k)
+    def path(points,color,width):
+        for a,b in zip(points,points[1:]):
+            mark(*point(a),*point(b),color,width*k*mm)
+    def label(value,x,y,size,color=ink):
+        px,py=point((x,y))
+        c.setFont(JP,size*k*mm)
+        c.setFillColorRGB(*color)
+        c.drawString(px*mm,A4[1]-py*mm,value)
+    hinge,outside=(1150,860),(1054,615)
+    ratio=math.hypot(96,245)/math.hypot(246,93)
+    inside=(1150-246*ratio,860-93*ratio)
+    path([(1050,860-60*math.sqrt(3)),(800,apex),(450,860),hinge,outside],ink,7.5)
+    path([hinge,inside],selector_red,7.5)
+    label("前面",1020,425,34)
+    path([(1005,438),(922.5,500)],note,2)
+    label("外側へ立てる",1240,515,40)
+    label("見せるマーク",1240,565,30)
+    path([(1240,590),(1190,590),(1092.4,713)],note,2)
+    label("内側へ入れる",640,598,40,selector_red)
+    label("隠すマーク",640,645,30,selector_red)
+    path([(850,666),(960,720),(1002.3,804.2)],note,2)
     c.restoreState()
 
 
@@ -333,7 +331,7 @@ def generate(cards: list[Card], output: Path, template="tent", *, font=DEFAULT_F
     if template not in ("tent","badges") or not cards:
         raise ValueError("テンプレートと出力対象を確認してください")
     register_font(font)
-    fixed = "組み立て表へ裏へ山折り・表と裏表：見せる側裏：不要側紙の下端折り返し重なりは間隔を広げて表示"+"".join(ASSEMBLY_EXAMPLE)+"".join(ASSEMBLY_COPY)+QR_CAPTION
+    fixed = "組み立て表へ裏へ横から見た図前面外側へ立てる見せるマーク内側へ入れる隠すマーク"+"".join(ASSEMBLY_EXAMPLE)+"".join(ASSEMBLY_COPY)+QR_CAPTION
     for card in cards:
         check_glyphs(card.name+card.place+(card.title+card.description+fixed if template == "tent" else ""))
         if template == "tent" and not card.title.strip():

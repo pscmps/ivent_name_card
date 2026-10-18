@@ -35,7 +35,8 @@ for template,filename in [('tent','tent-cards.pdf'),('badges','neck-badges.pdf')
         if template=='tent':
             card=cards[i]
             for value in [card.name,card.title,card.description,card.place,*ASSEMBLY_COPY]:assert normalize(value) in normalize(text)
-            for value in [*ASSEMBLY_EXAMPLE,"紙の下端","折り返し"]:assert normalize(value) in normalize(text)
+            for value in [*ASSEMBLY_EXAMPLE,"横から見た図","外側へ立てる","内側へ入れる"]:assert normalize(value) in normalize(text)
+            for value in ["同じ折り目","重なりは間隔を広げて表示"]:assert value not in text
             assert '根元まで21mm' not in text
             # Inspect real PDF stroke coordinates, including transformed diagrams.
             paths=[];points=[]
@@ -46,6 +47,17 @@ for template,filename in [('tent','tent-cards.pdf'),('badges','neck-badges.pdf')
                     x,y=map(float,args);points.append((cm[0]*x+cm[2]*y+cm[4],cm[1]*x+cm[3]*y+cm[5]))
                 if op==b'S' and len(points)==2:paths.append(points[:]);points=[]
             page.extract_text(visitor_operand_before=visitor)
+            # Actual PDF coordinates for the approved open paper chain and
+            # same-hinge selector alternatives (PDF y is measured from bottom).
+            apex=860-350*math.sqrt(3)
+            rendered=lambda p:np.array([pt(210-(118+(p[0]-450)*.074)),pt(157+(p[1]-apex)*.074-21)])
+            hinge=np.array([1150.,860.]);outer=np.array([1054.,615.])
+            inner=hinge-np.array([246.,93.])*np.linalg.norm(outer-hinge)/math.hypot(246,93)
+            free=np.array([1050.,860-60*math.sqrt(3)])
+            segments=[(free,[800,apex]),([800,apex],[450,860]),([450,860],hinge),(hinge,outer),(hinge,inner)]
+            for a,b in segments:
+                wanted=np.array([rendered(a),rendered(b)])
+                assert sum(np.allclose(p,wanted,atol=.01) or np.allclose(p,wanted[::-1],atol=.01) for p in paths)==1
             horizontal=[p for p in paths if abs(p[0][1]-p[1][1])<.01 and abs(abs(p[0][0]-p[1][0])-pt(198))<.01]
             assert len(horizontal)==3
             assert all(any(abs(p[0][1]-pt(297-v))<.01 for p in horizontal) for v in [21,113,205])
