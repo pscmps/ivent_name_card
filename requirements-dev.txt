@@ -1,0 +1,5 @@
+-r requirements.txt
+pypdf>=5,<7
+pypdfium2>=4.30,<6
+zxing-cpp>=2.3,<4
+numpy>=1.26,<3

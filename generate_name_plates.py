@@ -1,17 +1,25 @@
+# New templates are opt-in; the no-argument command keeps the legacy workflow.
+import sys
+if __name__ == "__main__" and (
+    "--help" in sys.argv or "-h" in sys.argv
+    or any(arg == "--template" or arg.startswith("--template=") for arg in sys.argv[1:])
+):
+    from event_cards import main as cards_main
+    raise SystemExit(cards_main())
+
 import csv
 from PIL import Image, ImageDraw, ImageFont
 import qrcode
 import os
 import re
-import sys
-import io
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 import math
 
 # 標準出力のエンコーディングをUTF-8に設定
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if __name__ == '__main__' and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 # フォント設定
 try:
@@ -21,6 +29,8 @@ try:
 except:
     # 失敗したらWindows標準フォントを使用
     font_path = "C:/Windows/Fonts/meiryo.ttc"
+    if not os.path.isfile(font_path):
+        font_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "NotoSansJP-Regular.ttf")
 
 font_size = 200
 font = ImageFont.truetype(font_path, font_size)
@@ -32,7 +42,7 @@ template_path = "name_plate_sample.png"
 
 # CSVファイルからデータを読み込む
 def read_csv(file_path):
-    with open(file_path, mode='r', encoding='utf-8') as file:
+    with open(file_path, mode='r', encoding='utf-8-sig') as file:
         reader = csv.DictReader(file)
         # 各フィールドの前後空白とタブを削除
         return [
@@ -98,16 +108,12 @@ def generate_image(data, output_dir):
     # 出展者名を描画
     draw.text((100, name_y), name_text, font=name_font, fill="black")
     
-    # QRコード用テキストを生成
-    # Xアカウントの有無をチェック
-    has_x_account = data['x'] != "https://x.com/" and data['x'] != "https://x.com"
-    
-    # QRコードのテキスト生成
-    if has_x_account:
-        qr_text = f"http://twitter.com/intent/tweet?text={data['作品']}({data['name']})%20%20%23つくろがや&url={data['x']}"
-    else:
-        qr_text = f"http://twitter.com/intent/tweet?text={data['作品']}({data['name']})%20%20%23つくろがや"
-    
+    # Keep the same author/work/tag/profile intent; encode every field safely.
+    from event_cards import x_profile, tweet_intent
+    profile = x_profile(data.get('x', ''))
+    has_x_account = profile is not None
+    qr_text = tweet_intent(data['作品'], data['name'], profile)
+
     qr_filename = os.path.join(qr_output_dir, f"{safe_name}_qr.png")
     qr_size = generate_qr_code(qr_text, qr_filename)
     
