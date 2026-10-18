@@ -10,7 +10,7 @@ from pypdf import PdfReader
 import zxingcpp
 
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
-from event_cards import ASSEMBLY_COPY,read_cards,tweet_intent
+from event_cards import ASSEMBLY_COPY,ASSEMBLY_EXAMPLE,read_cards,tweet_intent
 folder=ROOT/"samples";cards=read_cards(folder/"fictional.csv")
 normalize=lambda text:''.join(text.split())
 pt=lambda n:n*72/25.4
@@ -35,6 +35,7 @@ for template,filename in [('tent','tent-cards.pdf'),('badges','neck-badges.pdf')
         if template=='tent':
             card=cards[i]
             for value in [card.name,card.title,card.description,card.place,*ASSEMBLY_COPY]:assert normalize(value) in normalize(text)
+            for value in [*ASSEMBLY_EXAMPLE,"紙の下端","折り返し"]:assert normalize(value) in normalize(text)
             assert '根元まで21mm' not in text
             # Inspect real PDF stroke coordinates, including transformed diagrams.
             paths=[];points=[]
@@ -59,6 +60,16 @@ for template,filename in [('tent','tent-cards.pdf'),('badges','neck-badges.pdf')
                 assert len(codes)==1 and codes[0].text==tweet_intent(cards[i].title,cards[i].name,cards[i].x_profile)
                 assert np.all(a[round(21.2/25.4*dpi):round(112.8/25.4*dpi)]==255)
                 assert np.all(a[round(276.2/25.4*dpi):]==255)
+                band=a[:round(21/25.4*dpi)]
+                red=(band[:,:,0]>150)&(band[:,:,1]<60)&(band[:,:,2]<60)
+                for col,center in enumerate([28.35,63.35,96.05,133.35,168.35,201.05]):
+                    left,right=round(col*35/25.4*dpi),round((col+1)*35/25.4*dpi)
+                    ys,xs=np.nonzero(red[:,left:right])
+                    assert len(xs)>150 and abs((xs.min()+xs.max())/2+left-center/25.4*dpi)<2
+                    width=(xs.max()-xs.min()+1)/dpi*25.4
+                    # At 150dpi the diagonal's antialiased end pixels may fall
+                    # below the solid-red threshold; allow one pixel per end.
+                    assert (5.6<width<6.3 if col<3 else 4.5<width<5.5),(dpi,col,width)
             else:assert not codes
             if dpi==150:
                 previews.append(image)

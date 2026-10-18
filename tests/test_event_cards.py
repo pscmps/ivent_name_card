@@ -16,7 +16,7 @@ from pypdf import PdfReader
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from event_cards import ASSEMBLY_COPY,Card,badge_counts,generate,photo,positive_count,read_cards,tweet_intent,x_profile
+from event_cards import ASSEMBLY_COPY,ASSEMBLY_EXAMPLE,Card,badge_counts,generate,photo,positive_count,read_cards,tweet_intent,x_profile
 from urllib.parse import parse_qs,urlparse
 
 
@@ -92,6 +92,8 @@ class EventCardsTests(unittest.TestCase):
             pdf=PdfReader(path);self.assertEqual(len(pdf.pages),1)
             text="".join(pdf.pages[0].extract_text().split())
             for copy in ASSEMBLY_COPY:self.assertIn("".join(copy.split()),text)
+            for copy in ASSEMBLY_EXAMPLE:self.assertIn("".join(copy.split()),text)
+            for copy in ["紙の下端","折り返し"]:self.assertIn(copy,text)
             self.assertNotIn("根元まで21mm",text)
             with self.assertRaisesRegex(ValueError,"フォントにない文字"):
                 generate([Card("架空🤖","作品","",None)],folder/"bad.pdf")
@@ -104,6 +106,13 @@ class EventCardsTests(unittest.TestCase):
             clean=photo(path);self.assertEqual(clean.size,(40,80));self.assertEqual(clean.info,{})
             image.save(folder/"unsupported.gif")
             with self.assertRaises(ValueError):photo(folder/"unsupported.gif")
+
+    def test_placeholder_day_note_is_removed_without_changing_csv_or_inventing_date(self):
+        with workspace_fixture() as folder:
+            path=fixture_csv(folder,[["架空名","作品","説明","","土曜日（仮日程）","A-1"]],["日付","場所"])
+            original=path.read_bytes()
+            self.assertEqual(read_cards(path)[0].place,"土曜日  A-1")
+            self.assertEqual(path.read_bytes(),original)
 
     def test_legacy_no_argument_command_with_fictional_csv_is_preserved(self):
         with workspace_fixture() as folder:
