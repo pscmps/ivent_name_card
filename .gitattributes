@@ -1,2 +1,10 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Generated samples and fonts must retain their exact bytes on Windows.
+samples/*.pdf binary
+samples/*.png binary
+samples/images/*.png binary
+assets/*.ttf binary
+# Preserve the upstream license verbatim, including its whitespace.
+assets/NotoSansJP-LICENSE.txt -whitespace
